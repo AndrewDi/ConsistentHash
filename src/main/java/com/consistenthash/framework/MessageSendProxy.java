@@ -1,11 +1,15 @@
 package com.consistenthash.framework;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
 public class MessageSendProxy<T> implements InvocationHandler {
 
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     private Class<T> cls;
     private RpcClient rpcClient;
 
@@ -22,6 +26,7 @@ public class MessageSendProxy<T> implements InvocationHandler {
         request.setTypeParameters(method.getParameterTypes());
         request.setParametersVal(args);
 
+        log.debug("Start to remote call method:"+request.toString());
         RpcSendHandler handler = rpcClient.getRpcSendHandler();
         MessageCallBack callBack = handler.sendRequest(request);
         return callBack.start();

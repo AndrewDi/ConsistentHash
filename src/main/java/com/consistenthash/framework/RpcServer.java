@@ -25,60 +25,69 @@ public class RpcServer {
 
     private ServerBootstrap serverBootstrap;
     private ChannelFuture channelFuture;
-    private ConcurrentHashMap<String,Object> classMap = null;
+    private ConcurrentHashMap<String, Object> classMap = null;
+    private EventLoopGroup masterGroup;
+    private EventLoopGroup workerGroup;
 
-
-    public RpcServer(String ipWithPort){
-        if(ipWithPort.contains(":")){
-            this.ip=ipWithPort.split(":")[0];
+    public RpcServer(String ipWithPort) {
+        if (ipWithPort.contains(":")) {
+            this.ip = ipWithPort.split(":")[0];
             this.port = Integer.valueOf(ipWithPort.split(":")[1]);
-        }
-        else {
+        } else {
             log.error("Can not find usable ip and port");
         }
         classMap = new ConcurrentHashMap<String, Object>();
     }
 
-    public RpcServer(String ip,int port){
-        this.ip=ip;
-        this.port=port;
+    public RpcServer(String ip, int port) {
+        this.ip = ip;
+        this.port = port;
         classMap = new ConcurrentHashMap<String, Object>();
     }
 
-    public void start() throws Exception{
-        EventLoopGroup masterGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        try {
-            serverBootstrap = new ServerBootstrap();
-            serverBootstrap.group(masterGroup,workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .childHandler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel socketChannel) {
-                            ChannelPipeline pipeline = socketChannel.pipeline();
-                            pipeline.addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-                            pipeline.addLast(new LengthFieldPrepender(4));
-                            pipeline.addLast("encoder", new ObjectEncoder());
-                            pipeline.addLast("decoder", new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.cacheDisabled(null)));
-                            pipeline.addLast(new RpcRecvHandler(classMap));
-                        }
-                    })
-                    .option(ChannelOption.SO_BACKLOG,128)
-                    .childOption(ChannelOption.SO_KEEPALIVE,true);
+    public void start() {
+        masterGroup = new NioEventLoopGroup();
+        workerGroup = new NioEventLoopGroup();
+        serverBootstrap = new ServerBootstrap();
+        serverBootstrap.group(masterGroup, workerGroup)
+                .channel(NioServerSocketChannel.class)
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel socketChannel) {
+                        ChannelPipeline pipeline = socketChannel.pipeline();
+                        pipeline.addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+                        pipeline.addLast(new LengthFieldPrepender(4));
+                        pipeline.addLast("encoder", new ObjectEncoder());
+                        pipeline.addLast("decoder", new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.cacheDisabled(null)));
+                        pipeline.addLast(new RpcRecvHandler(classMap));
+                    }
+                })
+                .option(ChannelOption.SO_BACKLOG, 128)
+                .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-            channelFuture=serverBootstrap.bind(ip,port).sync();
-            log.info("Rpc Server is starting. IP:"+ip+" Port:"+port);
-            channelFuture.channel().closeFuture().sync();
-        }
-        finally {
-            workerGroup.shutdownGracefully();
-            masterGroup.shutdownGracefully();
-            log.info("Rpc Server has stopped.");
-        }
+        channelFuture = serverBootstrap.bind(ip, port).syncUninterruptibly();
+        log.info("Rpc Server is starting. IP:" + ip + " Port:" + port);
 
     }
 
-    public void putClass(String name,Object cls){
-        this.classMap.put(name,cls);
+    public void shutdown() {
+        if(workerGroup!=null)
+            workerGroup.shutdownGracefully();
+        if(masterGroup!=null)
+            masterGroup.shutdownGracefully();
+        channelFuture.channel().closeFuture().syncUninterruptibly();
+        log.info("Rpc Server has stopped.");
+    }
+
+    public void waitCore(){
+        try {
+            channelFuture.sync();
+        } catch (InterruptedException e) {
+            log.error(e.getLocalizedMessage());
+        }
+    }
+
+    public void putClass(String name, Object cls) {
+        this.classMap.put(name, cls);
     }
 }

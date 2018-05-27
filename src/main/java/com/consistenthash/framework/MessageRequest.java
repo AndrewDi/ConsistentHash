@@ -1,6 +1,8 @@
 package com.consistenthash.framework;
 
-public class MessageRequest {
+import java.io.Serializable;
+
+public class MessageRequest implements Serializable {
     private String messageId;
     private String className;
     private String methodName;

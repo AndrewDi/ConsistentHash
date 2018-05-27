@@ -16,6 +16,7 @@ public class RpcRecvHandler extends ChannelInboundHandlerAdapter {
     private ConcurrentHashMap<String,Object> classMap;
 
     public RpcRecvHandler(ConcurrentHashMap<String,Object> classMap){
+        assert(classMap!=null);
         this.classMap=classMap;
     }
 
@@ -26,11 +27,11 @@ public class RpcRecvHandler extends ChannelInboundHandlerAdapter {
      * @throws Exception
      */
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        log.debug("receive");
+    public void channelRead(ChannelHandlerContext ctx, Object msg)  {
+        log.debug("Receive rpc request:"+msg.toString());
         if(msg instanceof MessageRequest) {
             final MessageRequest messageRequest = (MessageRequest) msg;
-            MessageResponse messageResponse = new MessageResponse();
+            final MessageResponse messageResponse = new MessageResponse();
             messageResponse.setMessageId(messageRequest.getMessageId());
 
             String className = messageRequest.getClassName();
@@ -49,17 +50,49 @@ public class RpcRecvHandler extends ChannelInboundHandlerAdapter {
             }
             serverClass = classMap.get(className);
             if(null!=serverClass) {
-                Method method = serverClass.getClass().getMethod(methodName, methodType);
-                Object result = method.invoke(serverClass, messageRequest.getParametersVal());
-
-                messageResponse.setResult(result);
+                try {
+                    Method method = serverClass.getClass().getMethod(methodName, methodType);
+                    Object result = method.invoke(serverClass, messageRequest.getParametersVal());
+                    messageResponse.setResult(result);
+                }
+                catch (Exception ex){
+                    messageResponse.setResult(ex.getLocalizedMessage());
+                }
             }
             ctx.writeAndFlush(messageResponse).addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                    log.error("RPC Server Send message-id respone:" + messageRequest.getMessageId());
+                    log.debug("RPC Server send respone:" + messageResponse.toString());
                 }
             });
 
         }
+    }
+
+    @Override
+    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+        log.debug("Client connect from:"+ctx.channel().remoteAddress());
+        super.channelRegistered(ctx);
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        log.error(cause.getLocalizedMessage());
+        ctx.close();
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+    }
+
+    @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        log.debug("Client disconnect from:"+ctx.channel().remoteAddress());
+        super.channelUnregistered(ctx);
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        super.userEventTriggered(ctx, evt);
     }
 }
