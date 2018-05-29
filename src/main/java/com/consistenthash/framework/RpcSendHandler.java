@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RpcSendHandler extends ChannelInboundHandlerAdapter {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
-    private ConcurrentHashMap<String, MessageCallBack> mapCallBack = new ConcurrentHashMap<String, MessageCallBack>();
+    private ConcurrentHashMap<String, MessageCallBack> mapCallBack = new ConcurrentHashMap<>();
     private volatile Channel channel;
 
     @Override

@@ -19,6 +19,7 @@ public class RpcClient {
     private RpcSendHandler rpcSendHandler = new RpcSendHandler();
     private Channel channel;
     private EventLoopGroup group;
+    private ChannelFuture channelFuture;
 
     private String ip;
     private int port;
@@ -59,11 +60,12 @@ public class RpcClient {
                         pipeline.addLast("handler", rpcSendHandler);
                     }
                 });
-        channel = bootstrap.connect(ip, port).syncUninterruptibly().channel();
+        channelFuture = bootstrap.connect(ip, port).syncUninterruptibly();
+        channel = channelFuture.channel();
     }
 
-    public void sendMessageRequest(MessageRequest messageRequest){
-
+    public Boolean getStatus(){
+        return channelFuture.isSuccess();
     }
 
     public void close(){
