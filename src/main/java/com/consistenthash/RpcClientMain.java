@@ -8,7 +8,9 @@ public class RpcClientMain {
     public static void main(String[] args) throws Exception {
         RpcClient rpcClient = new RpcClient("127.0.0.1",12345);
         rpcClient.connect();
+        System.out.println(rpcClient.getStatus());
         ITest test = RpcProxy.create(ITest.class,rpcClient);
+        System.out.println(rpcClient.getStatus());
         for(int i=0;i<10;i++) {
             System.out.println(test.add());
         }

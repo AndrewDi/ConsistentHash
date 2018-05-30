@@ -20,6 +20,7 @@ public class RpcClient {
     private Channel channel;
     private EventLoopGroup group;
     private ChannelFuture channelFuture;
+    private Bootstrap bootstrap;
 
     private String ip;
     private int port;
@@ -44,7 +45,7 @@ public class RpcClient {
 
     public void connect() {
         group = new NioEventLoopGroup();
-        Bootstrap bootstrap = new Bootstrap();
+        bootstrap = new Bootstrap();
         bootstrap.group(group);
         bootstrap.channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, true)
@@ -60,16 +61,30 @@ public class RpcClient {
                         pipeline.addLast("handler", rpcSendHandler);
                     }
                 });
-        channelFuture = bootstrap.connect(ip, port).syncUninterruptibly();
-        channel = channelFuture.channel();
+        try {
+            channelFuture = bootstrap.connect(ip, port).sync();
+            channel = channelFuture.channel();
+        }
+        catch (Exception ex){
+            log.error("Connect fail:"+this.ip+":"+this.port);
+            this.close();
+        }
+
     }
 
     public Boolean getStatus(){
-        return channelFuture.isSuccess();
+        if(channelFuture!=null) {
+            log.warn("Client may not init complete");
+            return channelFuture.isSuccess();
+        }
+        return false;
     }
 
     public void close(){
-        group.shutdownGracefully();
-        group=null;
+        if(group!=null) {
+            group.shutdownGracefully();
+            group = null;
+        }
+        bootstrap=null;
     }
 }

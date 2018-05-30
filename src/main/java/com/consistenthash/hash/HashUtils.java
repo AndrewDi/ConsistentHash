@@ -10,7 +10,7 @@ public class HashUtils {
      *  等HASH算法要快很多，而且据说这个算法的碰撞率很低.
      *  http://murmurhash.googlepages.com/
      */
-    private static Long hash(String key) {
+    public static Long hash(String key) {
 
         ByteBuffer buf = ByteBuffer.wrap(key.getBytes());
         int seed = 0x1234ABCD;

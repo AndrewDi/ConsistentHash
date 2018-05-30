@@ -65,8 +65,14 @@ public class RpcServer {
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-        channelFuture = serverBootstrap.bind(ip, port).syncUninterruptibly();
-        log.info("Rpc Server is starting. IP:" + ip + " Port:" + port);
+        try {
+            channelFuture = serverBootstrap.bind(ip, port).sync();
+            log.info("Rpc Server is starting. IP:" + ip + " Port:" + port);
+        }
+        catch (InterruptedException ex){
+            log.error(ex.getLocalizedMessage());
+            this.shutdown();
+        }
 
     }
 
